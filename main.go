@@ -157,6 +157,54 @@ func newApp() *cli.App {
 			},
 		},
 	})
+	app.Commands = append(app.Commands, cli.Command{
+		Name: "delete",
+		Subcommands: cli.Commands{
+			{
+				Name: "version-artifact",
+				Flags: []cli.Flag{
+					cli.IntFlag{Name: flagVersionMajor, Required: true},
+					cli.IntFlag{Name: flagVersionMinor, Required: true},
+					cli.IntFlag{Name: flagVersionPatch, Required: true},
+					cli.StringSliceFlag{Name: flagVersionPrereleases},
+					cli.StringFlag{Name: flagVersionBuild},
+					cli.StringFlag{Name: flagArtifactUrl, Required: true},
+					cli.StringFlag{Name: flagArtifactSha256, Required: true},
+					cli.StringFlag{Name: flagArtifactSignature, Required: true},
+					cli.StringFlag{Name: flagArtifactArchitecture, Required: true},
+					cli.StringFlag{Name: flagArtifactOperatingSystem, Required: true},
+				},
+				Action: func(cctx *cli.Context) error {
+					apiURL := cctx.GlobalString(flagAPIURL)
+					releaseClient := releasev1connect.NewReleaseServiceClient(client, apiURL)
+					req := &releasepb.DeleteVersionArtifactRequest{
+						Version: &typesv1.Version{
+							Major:       int32(cctx.Int(flagVersionMajor)),
+							Minor:       int32(cctx.Int(flagVersionMinor)),
+							Patch:       int32(cctx.Int(flagVersionPatch)),
+							Prereleases: cctx.StringSlice(flagVersionPrereleases),
+							Build:       cctx.String(flagVersionBuild),
+						},
+						Artifact: &typesv1.VersionArtifact{
+							Url:             cctx.String(flagArtifactUrl),
+							Sha256:          cctx.String(flagArtifactSha256),
+							Signature:       cctx.String(flagArtifactSignature),
+							Architecture:    cctx.String(flagArtifactArchitecture),
+							OperatingSystem: cctx.String(flagArtifactOperatingSystem),
+						},
+					}
+					res, err := releaseClient.DeleteVersionArtifact(ctx, connect.NewRequest(req))
+					if err != nil {
+						return err
+					}
+					_ = res
+					log.Printf("deleted")
+					// TODO: do something
+					return nil
+				},
+			},
+		},
+	})
 	const (
 		flagCursor = "cursor"
 		flagLimit  = "limit"
