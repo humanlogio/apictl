@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"log"
 	"net/http"
 	"os"
@@ -97,38 +98,38 @@ func newApp() *cli.App {
 		},
 	})
 	const (
-		flagVersionMajor       = "v.major"
-		flagVersionMinor       = "v.minor"
-		flagVersionPatch       = "v.patch"
-		flagVersionPrereleases = "v.pre"
-		flagVersionBuild       = "v.build"
-		flagUrl                = "url"
-		flagSha256             = "sha256"
-		flagSignature          = "sig"
-		flagArchitecture       = "arch"
-		flagOperatingSystem    = "os"
+		flagVersionMajor            = "major"
+		flagVersionMinor            = "minor"
+		flagVersionPatch            = "patch"
+		flagVersionPrereleases      = "pre"
+		flagVersionBuild            = "build"
+		flagArtifactUrl             = "url"
+		flagArtifactSha256          = "sha256"
+		flagArtifactSignature       = "sig"
+		flagArtifactArchitecture    = "arch"
+		flagArtifactOperatingSystem = "os"
 	)
 	app.Commands = append(app.Commands, cli.Command{
 		Name: "create",
 		Subcommands: cli.Commands{
 			{
-				Name: "release",
+				Name: "version-artifact",
 				Flags: []cli.Flag{
 					cli.IntFlag{Name: flagVersionMajor, Required: true},
 					cli.IntFlag{Name: flagVersionMinor, Required: true},
 					cli.IntFlag{Name: flagVersionPatch, Required: true},
 					cli.StringSliceFlag{Name: flagVersionPrereleases},
 					cli.StringFlag{Name: flagVersionBuild},
-					cli.StringFlag{Name: flagUrl, Required: true},
-					cli.StringFlag{Name: flagSha256, Required: true},
-					cli.StringFlag{Name: flagSignature, Required: true},
-					cli.StringFlag{Name: flagArchitecture, Required: true},
-					cli.StringFlag{Name: flagOperatingSystem, Required: true},
+					cli.StringFlag{Name: flagArtifactUrl, Required: true},
+					cli.StringFlag{Name: flagArtifactSha256, Required: true},
+					cli.StringFlag{Name: flagArtifactSignature, Required: true},
+					cli.StringFlag{Name: flagArtifactArchitecture, Required: true},
+					cli.StringFlag{Name: flagArtifactOperatingSystem, Required: true},
 				},
 				Action: func(cctx *cli.Context) error {
 					apiURL := cctx.GlobalString(flagAPIURL)
 					releaseClient := releasev1connect.NewReleaseServiceClient(client, apiURL)
-					req := &releasepb.CreateReleaseRequest{
+					req := &releasepb.CreateVersionArtifactRequest{
 						Version: &typesv1.Version{
 							Major:       int32(cctx.Int(flagVersionMajor)),
 							Minor:       int32(cctx.Int(flagVersionMinor)),
@@ -136,19 +137,65 @@ func newApp() *cli.App {
 							Prereleases: cctx.StringSlice(flagVersionPrereleases),
 							Build:       cctx.String(flagVersionBuild),
 						},
-						Url:             cctx.String(flagUrl),
-						Sha256:          cctx.String(flagSha256),
-						Signature:       cctx.String(flagSignature),
-						Architecture:    cctx.String(flagArchitecture),
-						OperatingSystem: cctx.String(flagOperatingSystem),
+						Artifact: &typesv1.VersionArtifact{
+							Url:             cctx.String(flagArtifactUrl),
+							Sha256:          cctx.String(flagArtifactSha256),
+							Signature:       cctx.String(flagArtifactSignature),
+							Architecture:    cctx.String(flagArtifactArchitecture),
+							OperatingSystem: cctx.String(flagArtifactOperatingSystem),
+						},
 					}
-					res, err := releaseClient.CreateRelease(ctx, &connect.Request[releasepb.CreateReleaseRequest]{Msg: req})
+					res, err := releaseClient.CreateVersionArtifact(ctx, connect.NewRequest(req))
 					if err != nil {
 						return err
 					}
 					_ = res
 					log.Printf("created")
 					// TODO: do something
+					return nil
+				},
+			},
+		},
+	})
+	const (
+		flagCursor = "cursor"
+		flagLimit  = "limit"
+	)
+
+	app.Commands = append(app.Commands, cli.Command{
+		Name: "list",
+		Subcommands: cli.Commands{
+			{
+				Name: "version-artifact",
+				Flags: []cli.Flag{
+					cli.StringFlag{Name: flagCursor},
+					cli.Int64Flag{Name: flagLimit},
+				},
+				Action: func(cctx *cli.Context) error {
+					apiURL := cctx.GlobalString(flagAPIURL)
+					releaseClient := releasev1connect.NewReleaseServiceClient(client, apiURL)
+					var cursor *typesv1.Cursor
+					if opaque := cctx.String(flagCursor); opaque != "" {
+						cursor = &typesv1.Cursor{Opaque: []byte(opaque)}
+					}
+					req := &releasepb.ListVersionArtifactRequest{
+						Cursor: cursor,
+						Limit:  cctx.Int64(flagLimit),
+					}
+					res, err := releaseClient.ListVersionArtifact(ctx, connect.NewRequest(req))
+					if err != nil {
+						return err
+					}
+					enc := json.NewEncoder(os.Stdout)
+					for _, item := range res.Msg.Items {
+						if err := enc.Encode(item); err != nil {
+							log.Fatalf("encoding json: %v", err)
+						}
+					}
+					log.Printf("%d results", len(res.Msg.Items))
+					if res.Msg.Next != nil {
+						log.Printf("more results with --%s=%q", flagCursor, string(res.Msg.Next.Opaque))
+					}
 					return nil
 				},
 			},
