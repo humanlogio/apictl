@@ -199,7 +199,6 @@ func newApp() *cli.App {
 					}
 					_ = res
 					log.Printf("deleted")
-					// TODO: do something
 					return nil
 				},
 			},

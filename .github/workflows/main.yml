@@ -4,18 +4,28 @@ on:
     inputs:
       command:
         type: string
-      
-    
-      
+
+permissions:
+  contents: write
+
 jobs:
   create_a_release:
     name: create a release
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v1
-    - run: wget -O - https://github.com/humanlogio/apictl/releases/download/0.1.0/apictl_0.1.0_Linux_x86_64.tar.gz | tar xz
-    - run: ./apictl ${{ inputs.command }}
-      env:
-        HMAC_KEY_ID: ${{ secrets.HMAC_KEY_ID }}
-        HMAC_PRIVATE_KEY: ${{ secrets.HMAC_PRIVATE_KEY }}
-    
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+      - name: Import GPG key
+        id: import_gpg
+        uses: crazy-max/ghaction-import-gpg@v5
+        with:
+          gpg_private_key: ${{ secrets.GPG_PRIVATE_KEY }}
+          passphrase: ${{ secrets.GPG_PASSPHRASE }}
+      - name: List keys
+        run: gpg -K
+      - run: wget -O - https://github.com/humanlogio/apictl/releases/download/0.1.0/apictl_0.1.0_Linux_x86_64.tar.gz | tar xz -C /usr/bin
+      - run: apictl ${{ inputs.command }}
+        env:
+          HMAC_KEY_ID: ${{ secrets.HMAC_KEY_ID }}
+          HMAC_PRIVATE_KEY: ${{ secrets.HMAC_PRIVATE_KEY }}

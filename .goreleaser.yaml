@@ -1,10 +1,7 @@
-# This is an example .goreleaser.yml file with some sensible defaults.
-# Make sure to check the documentation at https://goreleaser.com
+project_name: apictl
 before:
   hooks:
-    # You may remove this if you don't use go modules.
     - go mod tidy
-    # you may remove this if you don't need go generate
     - go generate ./...
 builds:
   - env:
@@ -19,6 +16,18 @@ archives:
       amd64: x86_64
 checksum:
   name_template: "checksums.txt"
+signs:
+  - cmd: gpg
+    args:
+      [
+        "-u",
+        "AAC9300A41CCE12B",
+        "--output",
+        "${signature}",
+        "--detach-sign",
+        "${artifact}",
+      ]
+    artifacts: all
 snapshot:
   name_template: "{{ incpatch .Version }}-next"
 changelog:
