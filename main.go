@@ -82,22 +82,9 @@ func newApp() *cli.App {
 		return nil
 	}
 	app.After = func(cctx *cli.Context) error { cancel(); return nil }
-	app.Commands = append(app.Commands, cli.Command{
-		Name: "get",
-		Subcommands: cli.Commands{
-			{
-				Name: "next-update",
-				Action: func(cctx *cli.Context) error {
-					apiURL := cctx.GlobalString(flagAPIURL)
-					updateClient := cliupdatev1connect.NewUpdateServiceClient(client, apiURL)
-					_ = updateClient
-					// TODO: do something
-					return nil
-				},
-			},
-		},
-	})
+
 	const (
+		flagProjectName             = "project"
 		flagVersionMajor            = "major"
 		flagVersionMinor            = "minor"
 		flagVersionPatch            = "patch"
@@ -109,12 +96,33 @@ func newApp() *cli.App {
 		flagArtifactArchitecture    = "arch"
 		flagArtifactOperatingSystem = "os"
 	)
+
+	app.Commands = append(app.Commands, cli.Command{
+		Name: "get",
+		Subcommands: cli.Commands{
+			{
+				Name: "next-update",
+				Flags: []cli.Flag{
+					cli.StringFlag{Name: flagProjectName, Required: true},
+				},
+				Action: func(cctx *cli.Context) error {
+					apiURL := cctx.GlobalString(flagAPIURL)
+					updateClient := cliupdatev1connect.NewUpdateServiceClient(client, apiURL)
+					_ = updateClient
+					// TODO: do something
+					return nil
+				},
+			},
+		},
+	})
+
 	app.Commands = append(app.Commands, cli.Command{
 		Name: "create",
 		Subcommands: cli.Commands{
 			{
 				Name: "version-artifact",
 				Flags: []cli.Flag{
+					cli.StringFlag{Name: flagProjectName, Required: true},
 					cli.IntFlag{Name: flagVersionMajor, Required: true},
 					cli.IntFlag{Name: flagVersionMinor, Required: true},
 					cli.IntFlag{Name: flagVersionPatch, Required: true},
@@ -130,6 +138,7 @@ func newApp() *cli.App {
 					apiURL := cctx.GlobalString(flagAPIURL)
 					releaseClient := releasev1connect.NewReleaseServiceClient(client, apiURL)
 					req := &releasepb.CreateVersionArtifactRequest{
+						ProjectName: cctx.String(flagProjectName),
 						Version: &typesv1.Version{
 							Major:       int32(cctx.Int(flagVersionMajor)),
 							Minor:       int32(cctx.Int(flagVersionMinor)),
@@ -163,6 +172,7 @@ func newApp() *cli.App {
 			{
 				Name: "version-artifact",
 				Flags: []cli.Flag{
+					cli.StringFlag{Name: flagProjectName, Required: true},
 					cli.IntFlag{Name: flagVersionMajor, Required: true},
 					cli.IntFlag{Name: flagVersionMinor, Required: true},
 					cli.IntFlag{Name: flagVersionPatch, Required: true},
@@ -178,6 +188,7 @@ func newApp() *cli.App {
 					apiURL := cctx.GlobalString(flagAPIURL)
 					releaseClient := releasev1connect.NewReleaseServiceClient(client, apiURL)
 					req := &releasepb.DeleteVersionArtifactRequest{
+						ProjectName: cctx.String(flagProjectName),
 						Version: &typesv1.Version{
 							Major:       int32(cctx.Int(flagVersionMajor)),
 							Minor:       int32(cctx.Int(flagVersionMinor)),
@@ -215,6 +226,7 @@ func newApp() *cli.App {
 			{
 				Name: "version-artifact",
 				Flags: []cli.Flag{
+					cli.StringFlag{Name: flagProjectName, Required: true},
 					cli.StringFlag{Name: flagCursor},
 					cli.Int64Flag{Name: flagLimit},
 				},
@@ -226,8 +238,9 @@ func newApp() *cli.App {
 						cursor = &typesv1.Cursor{Opaque: []byte(opaque)}
 					}
 					req := &releasepb.ListVersionArtifactRequest{
-						Cursor: cursor,
-						Limit:  cctx.Int64(flagLimit),
+						ProjectName: cctx.String(flagProjectName),
+						Cursor:      cursor,
+						Limit:       cctx.Int64(flagLimit),
 					}
 					res, err := releaseClient.ListVersionArtifact(ctx, connect.NewRequest(req))
 					if err != nil {

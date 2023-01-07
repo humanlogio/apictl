@@ -6,7 +6,7 @@ require (
 	github.com/aybabtme/hmachttp v0.0.0-20221112075348-2e1763138894
 	github.com/aybabtme/rgbterm v0.0.0-20170906152045-cc83f3b3ce59
 	github.com/bufbuild/connect-go v1.4.1
-	github.com/humanlogio/api/go v0.0.0-20230107092931-deae16e2915e
+	github.com/humanlogio/api/go v0.0.0-20230107104326-bc4d9b947103
 	github.com/mattn/go-colorable v0.1.13
 	github.com/urfave/cli v1.22.10
 )

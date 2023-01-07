@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-set -eu
+set -euo pipefail
 
 root=$(git rev-parse --show-toplevel)
 
@@ -14,7 +14,8 @@ function handle_archive() {
         if [ -z "${url}" ]; then continue; fi
         local sig=$(get_signature ${path})
 
-        echo ./apictl create version-artifact \
+        ./apictl create version-artifact \
+            --project ${project} \
             --major $(get_version_major) \
             --minor $(get_version_minor) \
             --patch $(get_version_patch) \
@@ -28,7 +29,7 @@ function handle_archive() {
 
 function get_archive_url() {
     local filename=${1}
-    gh api graphql -F owner=${owner} -F name=${name} -F tag=${tag} -F filename=${filename} -f query='
+    gh api graphql -F owner=${owner} -F name=${project} -F tag=${tag} -F filename=${filename} -f query='
             query($name: String!, $owner: String!, $tag: String!, $filename: String!) {
                 repository(name: $name, owner: $owner) {
                     release(tagName: $tag) {
@@ -77,7 +78,7 @@ function get_project_name() {
 
 function main() {
     owner=humanlogio
-    name=$(get_project_name)
+    project=$(get_project_name)
     tag=$(get_version)
 
     list_archives | handle_archive
