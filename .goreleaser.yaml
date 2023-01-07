@@ -9,25 +9,31 @@ builds:
     goos:
       - linux
       - darwin
+release:
+  github:
+    owner: humanlogio
+    name: apictl
 archives:
-  - replacements:
-      darwin: Darwin
-      linux: Linux
-      amd64: x86_64
+  - name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+    format_overrides:
+      - goos: windows
+        format: zip
+    # hooks:
+    #   after: echo {{ .Path }} {{ .Major }} {{ .Minor }} {{ .Patch }} {{ .Prerelease }} {{ .ShortCommit }} {{ .ReleaseURL }}
 checksum:
   name_template: "checksums.txt"
-signs:
-  - cmd: gpg
-    args:
-      [
-        "-u",
-        "AAC9300A41CCE12B",
-        "--output",
-        "${signature}",
-        "--detach-sign",
-        "${artifact}",
-      ]
-    artifacts: all
+# signs:
+#   - cmd: gpg
+#     args:
+#       [
+#         "-u",
+#         "AAC9300A41CCE12B",
+#         "--output",
+#         "${signature}",
+#         "--detach-sign",
+#         "${artifact}",
+#       ]
+#     artifacts: all
 snapshot:
   name_template: "{{ incpatch .Version }}-next"
 changelog:
