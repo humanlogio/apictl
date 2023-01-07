@@ -19,14 +19,7 @@ jobs:
         with:
           go-version: ">=1.19.4"
           cache: true
-      - name: Import GPG key
-        id: import_gpg
-        uses: crazy-max/ghaction-import-gpg@v5
-        with:
-          gpg_private_key: ${{ secrets.GPG_PRIVATE_KEY }}
-          passphrase: ${{ secrets.GPG_PASSPHRASE }}
-      - name: List keys
-        run: gpg -K
+      - uses: sigstore/cosign-installer@main
       - run: wget -O - https://github.com/humanlogio/apictl/releases/download/0.1.0/apictl_0.1.0_Linux_x86_64.tar.gz | tar xz
       - run: ./apictl ${{ inputs.command }}
         env:
@@ -39,3 +32,4 @@ jobs:
           args: release --rm-dist
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - run: 
