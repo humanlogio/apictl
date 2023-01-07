@@ -18,8 +18,6 @@ archives:
     format_overrides:
       - goos: windows
         format: zip
-    # hooks:
-    #   after: echo {{ .Path }} {{ .Major }} {{ .Minor }} {{ .Patch }} {{ .Prerelease }} {{ .ShortCommit }} {{ .ReleaseURL }}
 checksum:
   name_template: "checksums.txt"
 signs:

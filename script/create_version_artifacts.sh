@@ -4,10 +4,6 @@ set -eu
 
 root=$(git rev-parse --show-toplevel)
 
-owner=humanlogio
-name=apictl
-tag=0.1.0
-
 function list_archives() {
     jq < dist/artifacts.json -r '.[] | select(.type == "Archive") | .name, .path, .goos, .goarch'
 }
@@ -18,7 +14,7 @@ function handle_archive() {
         if [ -z "${url}" ]; then continue; fi
         local sig=$(get_signature ${path})
 
-        ./apictl create version-artifact \
+        echo ./apictl create version-artifact \
             --major $(get_version_major) \
             --minor $(get_version_minor) \
             --patch $(get_version_patch) \
@@ -71,7 +67,19 @@ function get_version_patch() {
     echo "${patch}"
 }
 
+function get_version() {
+    jq < dist/metadata.json -r '.version'
+}
+
+function get_project_name() {
+    jq < dist/metadata.json -r '.project_name'
+}
+
 function main() {
+    owner=humanlogio
+    name=$(get_project_name)
+    tag=$(get_version)
+
     list_archives | handle_archive
 }
 
