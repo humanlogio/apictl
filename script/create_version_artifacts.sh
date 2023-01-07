@@ -15,6 +15,7 @@ function handle_archive() {
         local sig=$(get_signature ${path})
 
         echo ./apictl create version-artifact \
+            --project ${project} \
             --major $(get_version_major) \
             --minor $(get_version_minor) \
             --patch $(get_version_patch) \
@@ -28,7 +29,7 @@ function handle_archive() {
 
 function get_archive_url() {
     local filename=${1}
-    gh api graphql -F owner=${owner} -F name=${name} -F tag=${tag} -F filename=${filename} -f query='
+    gh api graphql -F owner=${owner} -F name=${project} -F tag=${tag} -F filename=${filename} -f query='
             query($name: String!, $owner: String!, $tag: String!, $filename: String!) {
                 repository(name: $name, owner: $owner) {
                     release(tagName: $tag) {
