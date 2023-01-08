@@ -11,6 +11,7 @@ import (
 	"github.com/aybabtme/hmachttp"
 	"github.com/aybabtme/rgbterm"
 	"github.com/bufbuild/connect-go"
+	cliupdatepb "github.com/humanlogio/api/go/svc/cliupdate/v1"
 	"github.com/humanlogio/api/go/svc/cliupdate/v1/cliupdatev1connect"
 	releasepb "github.com/humanlogio/api/go/svc/release/v1"
 	"github.com/humanlogio/api/go/svc/release/v1/releasev1connect"
@@ -51,16 +52,14 @@ func newApp() *cli.App {
 			Value: "https://api.humanlog.io",
 		},
 		cli.StringFlag{
-			Name:     flagHMACKeyID,
-			Value:    "",
-			Required: true,
-			EnvVar:   "HMAC_KEY_ID",
+			Name:   flagHMACKeyID,
+			Value:  "",
+			EnvVar: "HMAC_KEY_ID",
 		},
 		cli.StringFlag{
-			Name:     flagHMACPrivateKey,
-			Value:    "",
-			Required: true,
-			EnvVar:   "HMAC_PRIVATE_KEY",
+			Name:   flagHMACPrivateKey,
+			Value:  "",
+			EnvVar: "HMAC_PRIVATE_KEY",
 		},
 	}
 
@@ -95,6 +94,8 @@ func newApp() *cli.App {
 		flagArtifactSignature       = "sig"
 		flagArtifactArchitecture    = "arch"
 		flagArtifactOperatingSystem = "os"
+		flagAccountId               = "account.id"
+		flagMachineId               = "machine.id"
 	)
 
 	app.Commands = append(app.Commands, cli.Command{
@@ -104,12 +105,51 @@ func newApp() *cli.App {
 				Name: "next-update",
 				Flags: []cli.Flag{
 					cli.StringFlag{Name: flagProjectName, Required: true},
+					cli.IntFlag{Name: flagVersionMajor, Required: true},
+					cli.IntFlag{Name: flagVersionMinor, Required: true},
+					cli.IntFlag{Name: flagVersionPatch, Required: true},
+					cli.StringSliceFlag{Name: flagVersionPrereleases},
+					cli.StringFlag{Name: flagVersionBuild},
+					cli.StringFlag{Name: flagArtifactArchitecture, Required: true},
+					cli.StringFlag{Name: flagArtifactOperatingSystem, Required: true},
 				},
 				Action: func(cctx *cli.Context) error {
 					apiURL := cctx.GlobalString(flagAPIURL)
 					updateClient := cliupdatev1connect.NewUpdateServiceClient(client, apiURL)
-					_ = updateClient
-					// TODO: do something
+					accountId := cctx.Int64(flagAccountId)
+					machineId := cctx.Int64(flagMachineId)
+					res, err := updateClient.GetNextUpdate(ctx, connect.NewRequest(&cliupdatepb.GetNextUpdateRequest{
+						ProjectName: cctx.String(flagProjectName),
+						CurrentVersion: &typesv1.Version{
+							Major:       int32(cctx.Int(flagVersionMajor)),
+							Minor:       int32(cctx.Int(flagVersionMinor)),
+							Patch:       int32(cctx.Int(flagVersionPatch)),
+							Prereleases: cctx.StringSlice(flagVersionPrereleases),
+							Build:       cctx.String(flagVersionBuild),
+						},
+						AccountId:              accountId,
+						MachineId:              machineId,
+						MachineArchitecture:    cctx.String(flagArtifactArchitecture),
+						MachineOperatingSystem: cctx.String(flagArtifactOperatingSystem),
+					}))
+					if err != nil {
+						return err
+					}
+					msg := res.Msg
+
+					if accountId != msg.Account.Id {
+						log.Printf("an account id was assigned: %d", msg.Account.Id)
+					}
+					if machineId != msg.Machine.Id {
+						log.Printf("a machine id was assigned: %d", msg.Machine.Id)
+					}
+					if err := json.NewEncoder(os.Stdout).Encode(msg.NextVersion); err != nil {
+						log.Printf("can't encode response to stdout: %v", err)
+					}
+					log.Printf("this version is available here:")
+					log.Printf("- url: %s", msg.Url)
+					log.Printf("- sha256: %s", msg.Sha256)
+					log.Printf("- sig: %s", msg.Signature)
 					return nil
 				},
 			},
