@@ -84,6 +84,8 @@ func newApp() *cli.App {
 
 	const (
 		flagProjectName             = "project"
+		flagChannelName             = "channel"
+		flagChannelPriority         = "priority"
 		flagVersionMajor            = "major"
 		flagVersionMinor            = "minor"
 		flagVersionPatch            = "patch"
@@ -137,16 +139,21 @@ func newApp() *cli.App {
 					}
 					msg := res.Msg
 
-					if accountId != msg.Account.Id {
+					if msg.Account != nil && accountId != msg.Account.Id {
 						log.Printf("an account id was assigned: %d", msg.Account.Id)
 					}
-					if machineId != msg.Machine.Id {
+					if msg.Machine != nil && machineId != msg.Machine.Id {
 						log.Printf("a machine id was assigned: %d", msg.Machine.Id)
 					}
-					if err := json.NewEncoder(os.Stdout).Encode(msg.NextVersion); err != nil {
-						log.Printf("can't encode response to stdout: %v", err)
+					sv, err := msg.NextVersion.AsSemver()
+					if err != nil {
+						log.Printf("invalid version received: %v", err)
+					} else {
+						if err := json.NewEncoder(os.Stdout).Encode(sv); err != nil {
+							log.Printf("can't encode response to stdout: %v", err)
+						}
 					}
-					log.Printf("this version is available here:")
+					log.Printf("version %q is available here:", sv)
 					log.Printf("- url: %s", msg.Url)
 					log.Printf("- sha256: %s", msg.Sha256)
 					log.Printf("- sig: %s", msg.Signature)
@@ -159,6 +166,64 @@ func newApp() *cli.App {
 	app.Commands = append(app.Commands, cli.Command{
 		Name: "create",
 		Subcommands: cli.Commands{
+			{
+				Name: "release-channel",
+				Flags: []cli.Flag{
+					cli.StringFlag{Name: flagProjectName, Required: true},
+					cli.StringFlag{Name: flagChannelName, Required: true},
+					cli.IntFlag{Name: flagChannelPriority, Required: true},
+				},
+				Action: func(cctx *cli.Context) error {
+					apiURL := cctx.GlobalString(flagAPIURL)
+					releaseClient := releasev1connect.NewReleaseServiceClient(client, apiURL)
+					req := &releasepb.CreateReleaseChannelRequest{
+						ProjectName:     cctx.String(flagProjectName),
+						ChannelName:     cctx.String(flagChannelName),
+						ChannelPriority: int32(cctx.Int(flagChannelPriority)),
+					}
+					res, err := releaseClient.CreateReleaseChannel(ctx, connect.NewRequest(req))
+					if err != nil {
+						return err
+					}
+					_ = res
+					log.Printf("created")
+					return nil
+				},
+			},
+			{
+				Name: "published-version",
+				Flags: []cli.Flag{
+					cli.StringFlag{Name: flagProjectName, Required: true},
+					cli.StringFlag{Name: flagChannelName, Required: true},
+					cli.IntFlag{Name: flagVersionMajor, Required: true},
+					cli.IntFlag{Name: flagVersionMinor, Required: true},
+					cli.IntFlag{Name: flagVersionPatch, Required: true},
+					cli.StringSliceFlag{Name: flagVersionPrereleases},
+					cli.StringFlag{Name: flagVersionBuild},
+				},
+				Action: func(cctx *cli.Context) error {
+					apiURL := cctx.GlobalString(flagAPIURL)
+					releaseClient := releasev1connect.NewReleaseServiceClient(client, apiURL)
+					req := &releasepb.PublishVersionRequest{
+						ProjectName:        cctx.String(flagProjectName),
+						ReleaseChannelName: cctx.String(flagChannelName),
+						Version: &typesv1.Version{
+							Major:       int32(cctx.Int(flagVersionMajor)),
+							Minor:       int32(cctx.Int(flagVersionMinor)),
+							Patch:       int32(cctx.Int(flagVersionPatch)),
+							Prereleases: cctx.StringSlice(flagVersionPrereleases),
+							Build:       cctx.String(flagVersionBuild),
+						},
+					}
+					res, err := releaseClient.PublishVersion(ctx, connect.NewRequest(req))
+					if err != nil {
+						return err
+					}
+					_ = res
+					log.Printf("created")
+					return nil
+				},
+			},
 			{
 				Name: "version-artifact",
 				Flags: []cli.Flag{
@@ -209,6 +274,40 @@ func newApp() *cli.App {
 	app.Commands = append(app.Commands, cli.Command{
 		Name: "delete",
 		Subcommands: cli.Commands{
+			{
+				Name: "published-version",
+				Flags: []cli.Flag{
+					cli.StringFlag{Name: flagProjectName, Required: true},
+					cli.StringFlag{Name: flagChannelName, Required: true},
+					cli.IntFlag{Name: flagVersionMajor, Required: true},
+					cli.IntFlag{Name: flagVersionMinor, Required: true},
+					cli.IntFlag{Name: flagVersionPatch, Required: true},
+					cli.StringSliceFlag{Name: flagVersionPrereleases},
+					cli.StringFlag{Name: flagVersionBuild},
+				},
+				Action: func(cctx *cli.Context) error {
+					apiURL := cctx.GlobalString(flagAPIURL)
+					releaseClient := releasev1connect.NewReleaseServiceClient(client, apiURL)
+					req := &releasepb.UnpublishVersionRequest{
+						ProjectName:        cctx.String(flagProjectName),
+						ReleaseChannelName: cctx.String(flagChannelName),
+						Version: &typesv1.Version{
+							Major:       int32(cctx.Int(flagVersionMajor)),
+							Minor:       int32(cctx.Int(flagVersionMinor)),
+							Patch:       int32(cctx.Int(flagVersionPatch)),
+							Prereleases: cctx.StringSlice(flagVersionPrereleases),
+							Build:       cctx.String(flagVersionBuild),
+						},
+					}
+					res, err := releaseClient.UnpublishVersion(ctx, connect.NewRequest(req))
+					if err != nil {
+						return err
+					}
+					_ = res
+					log.Printf("deleted")
+					return nil
+				},
+			},
 			{
 				Name: "version-artifact",
 				Flags: []cli.Flag{
@@ -263,6 +362,42 @@ func newApp() *cli.App {
 	app.Commands = append(app.Commands, cli.Command{
 		Name: "list",
 		Subcommands: cli.Commands{
+			{
+				Name: "release-channel",
+				Flags: []cli.Flag{
+					cli.StringFlag{Name: flagProjectName, Required: true},
+					cli.StringFlag{Name: flagCursor},
+					cli.Int64Flag{Name: flagLimit},
+				},
+				Action: func(cctx *cli.Context) error {
+					apiURL := cctx.GlobalString(flagAPIURL)
+					releaseClient := releasev1connect.NewReleaseServiceClient(client, apiURL)
+					var cursor *typesv1.Cursor
+					if opaque := cctx.String(flagCursor); opaque != "" {
+						cursor = &typesv1.Cursor{Opaque: []byte(opaque)}
+					}
+					req := &releasepb.ListReleaseChannelRequest{
+						ProjectName: cctx.String(flagProjectName),
+						Cursor:      cursor,
+						Limit:       cctx.Int64(flagLimit),
+					}
+					res, err := releaseClient.ListReleaseChannel(ctx, connect.NewRequest(req))
+					if err != nil {
+						return err
+					}
+					enc := json.NewEncoder(os.Stdout)
+					for _, item := range res.Msg.Items {
+						if err := enc.Encode(item.ReleaseChannel); err != nil {
+							log.Fatalf("encoding json: %v", err)
+						}
+					}
+					log.Printf("%d results", len(res.Msg.Items))
+					if res.Msg.Next != nil {
+						log.Printf("more results with --%s=%q", flagCursor, string(res.Msg.Next.Opaque))
+					}
+					return nil
+				},
+			},
 			{
 				Name: "version-artifact",
 				Flags: []cli.Flag{
