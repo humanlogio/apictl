@@ -107,6 +107,8 @@ func newApp() *cli.App {
 				Name: "next-update",
 				Flags: []cli.Flag{
 					cli.StringFlag{Name: flagProjectName, Required: true},
+					cli.IntFlag{Name: flagAccountId, Required: true},
+					cli.IntFlag{Name: flagMachineId, Required: true},
 					cli.IntFlag{Name: flagVersionMajor, Required: true},
 					cli.IntFlag{Name: flagVersionMinor, Required: true},
 					cli.IntFlag{Name: flagVersionPatch, Required: true},
