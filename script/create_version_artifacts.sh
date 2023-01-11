@@ -14,7 +14,7 @@ function handle_archive() {
         if [ -z "${url}" ]; then echo "no archive for ${filename}"; continue; fi
         local sig=$(get_signature ${path})
 
-        ./apictl create version-artifact \
+        apictl create version-artifact \
             --project ${project} \
             --major $(get_version_major) \
             --minor $(get_version_minor) \
