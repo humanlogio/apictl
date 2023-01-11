@@ -553,9 +553,48 @@ func newApp() *cli.App {
 				},
 			},
 			{
-				Name:  "update",
-				Flags: []cli.Flag{},
+				Name: "update",
+				Flags: []cli.Flag{
+					cli.IntFlag{Name: flagAccountId, Value: -1},
+					cli.IntFlag{Name: flagMachineId, Value: -1},
+				},
 				Action: func(cctx *cli.Context) error {
+					apiURL := cctx.GlobalString(flagAPIURL)
+					updateClient := cliupdatev1connect.NewUpdateServiceClient(client, apiURL)
+					accountId := cctx.Int64(flagAccountId)
+					machineId := cctx.Int64(flagMachineId)
+					res, err := updateClient.GetNextUpdate(ctx, connect.NewRequest(&cliupdatepb.GetNextUpdateRequest{
+						ProjectName:            "apictl",
+						CurrentVersion:         version,
+						AccountId:              accountId,
+						MachineId:              machineId,
+						MachineArchitecture:    runtime.GOARCH,
+						MachineOperatingSystem: runtime.GOOS,
+					}))
+					if err != nil {
+						return err
+					}
+					msg := res.Msg
+
+					if msg.Account != nil && accountId != msg.Account.Id {
+						log.Printf("an account id was assigned: %d", msg.Account.Id)
+					}
+					if msg.Machine != nil && machineId != msg.Machine.Id {
+						log.Printf("a machine id was assigned: %d", msg.Machine.Id)
+					}
+
+					currentSV, err := version.AsSemver()
+					if err != nil {
+						return err
+					}
+					nextSV, err := msg.NextVersion.AsSemver()
+					if err != nil {
+						return err
+					}
+					if currentSV.GTE(nextSV) {
+						log.Printf("you're already running the latest version: v%v", semverVersion.String())
+						return nil
+					}
 					return selfupdate.UpgradeInPlace(ctx, "apictl", os.Stdout, os.Stderr, os.Stdin)
 				},
 			},
