@@ -22,6 +22,7 @@ import (
 	"github.com/humanlogio/apictl/pkg/selfupdate"
 	"github.com/mattn/go-colorable"
 	"github.com/urfave/cli"
+	"google.golang.org/protobuf/proto"
 )
 
 var (
@@ -504,6 +505,10 @@ func newApp() *cli.App {
 					}
 					if msg.Machine != nil && machineId != msg.Machine.Id {
 						log.Printf("a machine id was assigned: %d", msg.Machine.Id)
+					}
+					if proto.Equal(msg.NextVersion, version) {
+						log.Printf("you're already running the latest version: v%v", semverVersion.String())
+						return nil
 					}
 					sv, err := msg.NextVersion.AsSemver()
 					if err != nil {
