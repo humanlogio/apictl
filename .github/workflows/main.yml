@@ -33,7 +33,7 @@ jobs:
           COSIGN_PWD: ${{ secrets.COSIGN_PWD }}
           COSIGN_PRIVATE_KEY: ${{ secrets.COSIGN_PRIVATE_KEY }}
       - run: echo "${HOME}/.humanlog/bin" >> $GITHUB_PATH
-      - run: curl https://humanlog.io/install.sh | bash
+      - run: curl https://humanlog.io/install_apictl.sh | bash
       - run: apictl ${{ inputs.command }}
         env:
           HMAC_KEY_ID: ${{ secrets.HMAC_KEY_ID }}
