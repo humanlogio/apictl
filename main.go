@@ -23,7 +23,6 @@ import (
 	"github.com/humanlogio/apictl/pkg/selfupdate"
 	"github.com/mattn/go-colorable"
 	"github.com/urfave/cli"
-	"google.golang.org/protobuf/proto"
 )
 
 var (
@@ -531,15 +530,21 @@ func newApp() *cli.App {
 					if msg.Machine != nil && machineId != msg.Machine.Id {
 						log.Printf("a machine id was assigned: %d", msg.Machine.Id)
 					}
-					if proto.Equal(msg.NextVersion, version) {
+
+					currentSV, err := version.AsSemver()
+					if err != nil {
+						return err
+					}
+					nextSV, err := msg.NextVersion.AsSemver()
+					if err != nil {
+						return err
+					}
+					if currentSV.GTE(nextSV) {
 						log.Printf("you're already running the latest version: v%v", semverVersion.String())
 						return nil
 					}
-					sv, err := msg.NextVersion.AsSemver()
-					if err != nil {
-						log.Printf("invalid version received: %v", err)
-					}
-					log.Printf("v%s is available here:", sv)
+					log.Printf("you are running v%s", currentSV)
+					log.Printf("a newer version v%s is available here:", nextSV)
 					log.Printf("- url: %s", msg.Url)
 					log.Printf("- sha256: %s", msg.Sha256)
 					log.Printf("- sig: %s", msg.Signature)
