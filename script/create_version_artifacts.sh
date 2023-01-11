@@ -11,7 +11,7 @@ function list_archives() {
 function handle_archive() {
     while read -r filename; read -r path; read -r goos; read -r goarch; do
         local url=$(get_archive_url ${filename})
-        if [ -z "${url}" ]; then continue; fi
+        if [ -z "${url}" ]; then echo "no archive for ${filename}"; continue; fi
         local sig=$(get_signature ${path})
 
         ./apictl create version-artifact \
@@ -29,7 +29,7 @@ function handle_archive() {
 
 function get_archive_url() {
     local filename=${1}
-    gh api graphql -F owner=${owner} -F name=${project} -F tag=${tag} -F filename=${filename} -f query='
+    gh api graphql -F owner=${owner} -F name=${project} -F tag="v${tag}" -F filename=${filename} -f query='
             query($name: String!, $owner: String!, $tag: String!, $filename: String!) {
                 repository(name: $name, owner: $owner) {
                     release(tagName: $tag) {
