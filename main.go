@@ -7,17 +7,49 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"runtime"
+	"strconv"
 
 	"github.com/aybabtme/hmachttp"
 	"github.com/aybabtme/rgbterm"
+	"github.com/blang/semver"
 	"github.com/bufbuild/connect-go"
 	cliupdatepb "github.com/humanlogio/api/go/svc/cliupdate/v1"
 	"github.com/humanlogio/api/go/svc/cliupdate/v1/cliupdatev1connect"
 	releasepb "github.com/humanlogio/api/go/svc/release/v1"
 	"github.com/humanlogio/api/go/svc/release/v1/releasev1connect"
 	typesv1 "github.com/humanlogio/api/go/types/v1"
+	"github.com/humanlogio/apictl/pkg/selfupdate"
 	"github.com/mattn/go-colorable"
 	"github.com/urfave/cli"
+)
+
+var (
+	versionMajor      = "0"
+	versionMinor      = "0"
+	versionPatch      = "0"
+	versionPrerelease = "devel"
+	versionBuild      = ""
+	version           = func() *typesv1.Version {
+		var prerelease []string
+		if versionPrerelease != "" {
+			prerelease = append(prerelease, versionPrerelease)
+		}
+		return &typesv1.Version{
+			Major:       int32(mustatoi(versionMajor)),
+			Minor:       int32(mustatoi(versionMinor)),
+			Patch:       int32(mustatoi(versionPatch)),
+			Prereleases: prerelease,
+			Build:       versionBuild,
+		}
+	}()
+	semverVersion = func() semver.Version {
+		v, err := version.AsSemver()
+		if err != nil {
+			panic(err)
+		}
+		return v
+	}()
 )
 
 func main() {
@@ -46,6 +78,7 @@ func newApp() *cli.App {
 	app.Author = "Antoine Grondin"
 	app.Email = "antoinegrondin@gmail.com"
 	app.Name = "apictl"
+	app.Version = semverVersion.String()
 	app.Flags = []cli.Flag{
 		cli.StringFlag{
 			Name:  flagAPIURL,
@@ -439,5 +472,68 @@ func newApp() *cli.App {
 		},
 	})
 
+	app.Commands = append(app.Commands, cli.Command{
+		Name: "version",
+		Subcommands: cli.Commands{
+			{
+				Name: "check",
+				Flags: []cli.Flag{
+					cli.IntFlag{Name: flagAccountId, Value: -1},
+					cli.IntFlag{Name: flagMachineId, Value: -1},
+				},
+				Action: func(cctx *cli.Context) error {
+					apiURL := cctx.GlobalString(flagAPIURL)
+					updateClient := cliupdatev1connect.NewUpdateServiceClient(client, apiURL)
+					accountId := cctx.Int64(flagAccountId)
+					machineId := cctx.Int64(flagMachineId)
+					res, err := updateClient.GetNextUpdate(ctx, connect.NewRequest(&cliupdatepb.GetNextUpdateRequest{
+						ProjectName:            "apictl",
+						CurrentVersion:         version,
+						AccountId:              accountId,
+						MachineId:              machineId,
+						MachineArchitecture:    runtime.GOARCH,
+						MachineOperatingSystem: runtime.GOOS,
+					}))
+					if err != nil {
+						return err
+					}
+					msg := res.Msg
+
+					if msg.Account != nil && accountId != msg.Account.Id {
+						log.Printf("an account id was assigned: %d", msg.Account.Id)
+					}
+					if msg.Machine != nil && machineId != msg.Machine.Id {
+						log.Printf("a machine id was assigned: %d", msg.Machine.Id)
+					}
+					sv, err := msg.NextVersion.AsSemver()
+					if err != nil {
+						log.Printf("invalid version received: %v", err)
+					}
+					log.Printf("v%s is available here:", sv)
+					log.Printf("- url: %s", msg.Url)
+					log.Printf("- sha256: %s", msg.Sha256)
+					log.Printf("- sig: %s", msg.Signature)
+					log.Printf("run `apictl version update` to update")
+					return nil
+				},
+			},
+			{
+				Name:  "update",
+				Flags: []cli.Flag{},
+				Action: func(cctx *cli.Context) error {
+					return selfupdate.UpgradeInPlace(ctx, "apictl", os.Stdout, os.Stderr, os.Stdin)
+				},
+			},
+		},
+	})
+
 	return app
+}
+
+func mustatoi(a string) int {
+	i, err := strconv.Atoi(a)
+	if err != nil {
+		panic(err)
+	}
+	return i
 }

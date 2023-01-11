@@ -6,9 +6,15 @@ before:
 builds:
   - env:
       - CGO_ENABLED=0
+    ldflags:
+      - -s -w -X main.versionMajor={{.Major}} -X main.versionMinor={{.Minor}} -X main.versionPatch={{.Patch}} -X main.versionPrerelease={{.Prerelease}} -X main.versionBuild={{.ShortCommit}}
     goos:
-      - linux
+      - windows
       - darwin
+      - linux
+    goarch:
+      - amd64
+      - arm64
 release:
   github:
     owner: humanlogio
