@@ -193,21 +193,24 @@ func newApp() *cli.App {
 					res, err := updateClient.GetNextUpdate(ctx, connect.NewRequest(&cliupdatepb.GetNextUpdateRequest{
 						ProjectName:            cctx.String(flagProjectName),
 						CurrentVersion:         version,
-						AccountId:              accountId,
-						MachineId:              machineId,
 						MachineArchitecture:    cctx.String(flagArtifactArchitecture),
 						MachineOperatingSystem: cctx.String(flagArtifactOperatingSystem),
+						Meta: &typesv1.ReqMeta{
+							AccountId: accountId,
+							MachineId: machineId,
+						},
 					}))
 					if err != nil {
 						return err
 					}
 					msg := res.Msg
+					meta := msg.Meta
 
-					if msg.Account != nil && accountId != msg.Account.Id {
-						log.Printf("an account id was assigned: %d", msg.Account.Id)
+					if accountId != meta.AccountId {
+						log.Printf("an account id was assigned: %d", meta.AccountId)
 					}
-					if msg.Machine != nil && machineId != msg.Machine.Id {
-						log.Printf("a machine id was assigned: %d", msg.Machine.Id)
+					if machineId != meta.MachineId {
+						log.Printf("a machine id was assigned: %d", meta.MachineId)
 					}
 					sv, err := msg.NextVersion.AsSemver()
 					if err != nil {
@@ -514,21 +517,23 @@ func newApp() *cli.App {
 					res, err := updateClient.GetNextUpdate(ctx, connect.NewRequest(&cliupdatepb.GetNextUpdateRequest{
 						ProjectName:            "apictl",
 						CurrentVersion:         version,
-						AccountId:              accountId,
-						MachineId:              machineId,
 						MachineArchitecture:    runtime.GOARCH,
 						MachineOperatingSystem: runtime.GOOS,
+						Meta: &typesv1.ReqMeta{
+							AccountId: accountId,
+							MachineId: machineId,
+						},
 					}))
 					if err != nil {
 						return err
 					}
 					msg := res.Msg
-
-					if msg.Account != nil && accountId != msg.Account.Id {
-						log.Printf("an account id was assigned: %d", msg.Account.Id)
+					meta := msg.Meta
+					if accountId != meta.AccountId {
+						log.Printf("an account id was assigned: %d", meta.AccountId)
 					}
-					if msg.Machine != nil && machineId != msg.Machine.Id {
-						log.Printf("a machine id was assigned: %d", msg.Machine.Id)
+					if machineId != meta.MachineId {
+						log.Printf("a machine id was assigned: %d", meta.MachineId)
 					}
 
 					currentSV, err := version.AsSemver()
@@ -566,21 +571,23 @@ func newApp() *cli.App {
 					res, err := updateClient.GetNextUpdate(ctx, connect.NewRequest(&cliupdatepb.GetNextUpdateRequest{
 						ProjectName:            "apictl",
 						CurrentVersion:         version,
-						AccountId:              accountId,
-						MachineId:              machineId,
 						MachineArchitecture:    runtime.GOARCH,
 						MachineOperatingSystem: runtime.GOOS,
+						Meta: &typesv1.ReqMeta{
+							AccountId: accountId,
+							MachineId: machineId,
+						},
 					}))
 					if err != nil {
 						return err
 					}
 					msg := res.Msg
-
-					if msg.Account != nil && accountId != msg.Account.Id {
-						log.Printf("an account id was assigned: %d", msg.Account.Id)
+					meta := msg.Meta
+					if accountId != meta.AccountId {
+						log.Printf("an account id was assigned: %d", meta.AccountId)
 					}
-					if msg.Machine != nil && machineId != msg.Machine.Id {
-						log.Printf("a machine id was assigned: %d", msg.Machine.Id)
+					if machineId != meta.MachineId {
+						log.Printf("a machine id was assigned: %d", meta.MachineId)
 					}
 
 					currentSV, err := version.AsSemver()

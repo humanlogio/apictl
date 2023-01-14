@@ -8,7 +8,7 @@ require (
 	github.com/blang/semver v3.5.1+incompatible
 	github.com/bufbuild/connect-go v1.4.1
 	github.com/cli/safeexec v1.0.1
-	github.com/humanlogio/api/go v0.0.0-20230108030320-eda29f98df5a
+	github.com/humanlogio/api/go v0.0.0-20230114032924-720377a9d5df
 	github.com/mattn/go-colorable v0.1.13
 	github.com/urfave/cli v1.22.10
 )
