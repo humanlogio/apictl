@@ -221,9 +221,9 @@ func newApp() *cli.App {
 						}
 					}
 					log.Printf("version %q is available here:", sv)
-					log.Printf("- url: %s", msg.Url)
-					log.Printf("- sha256: %s", msg.Sha256)
-					log.Printf("- sig: %s", msg.Signature)
+					log.Printf("- url: %s", msg.NextArtifact.Url)
+					log.Printf("- sha256: %s", msg.NextArtifact.Sha256)
+					log.Printf("- sig: %s", msg.NextArtifact.Signature)
 					return nil
 				},
 			},
@@ -550,9 +550,9 @@ func newApp() *cli.App {
 					}
 					log.Printf("you are running v%s", currentSV)
 					log.Printf("a newer version v%s is available here:", nextSV)
-					log.Printf("- url: %s", msg.Url)
-					log.Printf("- sha256: %s", msg.Sha256)
-					log.Printf("- sig: %s", msg.Signature)
+					log.Printf("- url: %s", msg.NextArtifact.Url)
+					log.Printf("- sha256: %s", msg.NextArtifact.Sha256)
+					log.Printf("- sig: %s", msg.NextArtifact.Signature)
 					log.Printf("run `apictl version update` to update")
 					return nil
 				},
