@@ -1,10 +1,13 @@
 project_name: apictl
+version: 2
 before:
   hooks:
     - go mod tidy
     - go generate ./...
 builds:
-  - env:
+  - main: .
+    binary: apictl
+    env:
       - CGO_ENABLED=0
     ldflags:
       - -s -w -X main.versionMajor={{.Major}} -X main.versionMinor={{.Minor}} -X main.versionPatch={{.Patch}} -X main.versionPrerelease={{.Prerelease}} -X main.versionBuild={{.ShortCommit}}
@@ -26,17 +29,6 @@ archives:
         format: zip
 checksum:
   name_template: "checksums.txt"
-signs:
-  - cmd: cosign
-    stdin: "{{ .Env.COSIGN_PWD }}"
-    args:
-      [
-        "sign-blob",
-        "--key=env://COSIGN_PRIVATE_KEY",
-        "--output-signature=${signature}",
-        "${artifact}",
-      ]
-    artifacts: all
 snapshot:
   name_template: "{{ incpatch .Version }}-next"
 changelog:

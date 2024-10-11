@@ -11,10 +11,10 @@ import (
 	"strconv"
 	"strings"
 
+	"connectrpc.com/connect"
 	"github.com/aybabtme/hmachttp"
 	"github.com/aybabtme/rgbterm"
 	"github.com/blang/semver"
-	"github.com/bufbuild/connect-go"
 	cliupdatepb "github.com/humanlogio/api/go/svc/cliupdate/v1"
 	"github.com/humanlogio/api/go/svc/cliupdate/v1/cliupdatev1connect"
 	releasepb "github.com/humanlogio/api/go/svc/release/v1"

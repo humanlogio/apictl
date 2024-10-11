@@ -3,12 +3,12 @@ module github.com/humanlogio/apictl
 go 1.19
 
 require (
+	connectrpc.com/connect v1.16.2
 	github.com/aybabtme/hmachttp v0.0.0-20221112075348-2e1763138894
 	github.com/aybabtme/rgbterm v0.0.0-20170906152045-cc83f3b3ce59
 	github.com/blang/semver v3.5.1+incompatible
-	github.com/bufbuild/connect-go v1.4.1
 	github.com/cli/safeexec v1.0.1
-	github.com/humanlogio/api/go v0.0.0-20230114081617-9054c2994bcc
+	github.com/humanlogio/api/go v0.0.0-20241011070935-7bb04da206c8
 	github.com/mattn/go-colorable v0.1.13
 	github.com/urfave/cli v1.22.10
 )
@@ -20,5 +20,5 @@ require (
 	github.com/russross/blackfriday/v2 v2.0.1 // indirect
 	github.com/shurcooL/sanitized_anchor_name v1.0.0 // indirect
 	golang.org/x/sys v0.2.0 // indirect
-	google.golang.org/protobuf v1.28.1 // indirect
+	google.golang.org/protobuf v1.33.0 // indirect
 )
