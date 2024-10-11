@@ -1,0 +1,45 @@
+name: Create a release
+
+on:
+  push:
+    tags:
+      - "*"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  create_a_release:
+    name: create a release
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+      - run: git fetch --force --tags
+      - uses: actions/setup-go@v3
+        with:
+          go-version: ">=1.19.4"
+          cache: true
+      - uses: sigstore/cosign-installer@main
+      - uses: goreleaser/goreleaser-action@v4
+        with:
+          distribution: goreleaser
+          version: latest
+          args: release --clean --config .goreleaser.yaml
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          COSIGN_PWD: ${{ secrets.COSIGN_PWD }}
+          COSIGN_PRIVATE_KEY: ${{ secrets.COSIGN_PRIVATE_KEY }}
+      - run: echo "${HOME}/.humanlog/bin" >> $GITHUB_PATH
+      - run: curl https://humanlog.dev/install_apictl.sh | bash
+      - run: apictl ${{ inputs.command }}
+        env:
+          HMAC_KEY_ID: ${{ secrets.DEV_HMAC_KEY_ID }}
+          HMAC_PRIVATE_KEY: ${{ secrets.DEV_HMAC_PRIVATE_KEY }}
+      - run: ./script/create_version_artifacts.sh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          HMAC_KEY_ID: ${{ secrets.DEV_HMAC_KEY_ID }}
+          HMAC_PRIVATE_KEY: ${{ secrets.DEV_HMAC_PRIVATE_KEY }}

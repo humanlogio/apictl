@@ -302,7 +302,7 @@ func newApp() *cli.App {
 					cli.StringFlag{Name: flagVersionBuild},
 					cli.StringFlag{Name: flagArtifactUrl, Required: true},
 					cli.StringFlag{Name: flagArtifactSha256, Required: true},
-					cli.StringFlag{Name: flagArtifactSignature, Required: true},
+					cli.StringFlag{Name: flagArtifactSignature, Required: false},
 					cli.StringFlag{Name: flagArtifactArchitecture, Required: true},
 					cli.StringFlag{Name: flagArtifactOperatingSystem, Required: true},
 				},
