@@ -34,7 +34,11 @@ var (
 	version           = func() *typesv1.Version {
 		var prerelease []string
 		if versionPrerelease != "" {
-			prerelease = append(prerelease, versionPrerelease)
+			for _, pre := range strings.Split(versionPrerelease, ".") {
+				if pre != "" {
+					prerelease = append(prerelease, pre)
+				}
+			}
 		}
 		return &typesv1.Version{
 			Major:       int32(mustatoi(versionMajor)),
@@ -152,13 +156,20 @@ func newApp() *cli.App {
 			out.Build = strings.Join(vv.Build, ".")
 			return out, nil
 		}
-		return &typesv1.Version{
-			Major:       int32(cctx.Int(flagVersionMajor)),
-			Minor:       int32(cctx.Int(flagVersionMinor)),
-			Patch:       int32(cctx.Int(flagVersionPatch)),
-			Prereleases: cctx.StringSlice(flagVersionPrereleases),
-			Build:       cctx.String(flagVersionBuild),
-		}, nil
+		out := &typesv1.Version{
+			Major: int32(cctx.Int(flagVersionMajor)),
+			Minor: int32(cctx.Int(flagVersionMinor)),
+			Patch: int32(cctx.Int(flagVersionPatch)),
+			Build: cctx.String(flagVersionBuild),
+		}
+		for _, pres := range cctx.StringSlice(flagVersionPrereleases) {
+			for _, pre := range strings.Split(pres, ".") {
+				if pre != "" {
+					out.Prereleases = append(out.Prereleases, pre)
+				}
+			}
+		}
+		return out, nil
 	}
 
 	app.Commands = append(app.Commands, cli.Command{

@@ -1,0 +1,44 @@
+project_name: apictl
+version: 2
+before:
+  hooks:
+    - go mod tidy
+    - go generate ./...
+    - mkdir -p dist-extra
+    - script/write_version_info.sh "{{.Major}}" "{{.Minor}}" "{{.Patch}}" "next.{{ .CommitTimestamp }}" "{{.ShortCommit}}" "https://humanlog-binaries.sfo3.cdn.digitaloceanspaces.com/humanlog-binaries/{{ .ProjectName }}/dev/{{ .CommitTimestamp }}/{{ .ShortCommit }}"
+builds:
+  - main: .
+    binary: apictl
+    env:
+      - CGO_ENABLED=0
+    ldflags:
+      - -s -w -X main.versionMajor={{.Major}} -X main.versionMinor={{.Minor}} -X main.versionPatch={{.Patch}} -X main.versionPrerelease=next.{{ .CommitTimestamp }} -X main.versionBuild={{.ShortCommit}} -X main.defaultApiAddr="https://api.humanlog.dev"
+    goos:
+      # - windows
+      - darwin
+      - linux
+    goarch:
+      - amd64
+      - arm64
+release:
+  disable: true
+blobs:
+  - provider: s3
+    endpoint: https://humanlog-binaries.sfo3.digitaloceanspaces.com
+    region: sfo3
+    bucket: humanlog-binaries
+    directory: "{{ .ProjectName }}/dev/{{ .CommitTimestamp }}/{{ .ShortCommit }}"
+    include_meta: true
+    acl: public-read
+    cache_control:
+      - max-age=9999
+      - public
+archives:
+  - name_template: "{{ .ProjectName }}_{{ .Version }}-next.{{ .CommitTimestamp }}+{{ .ShortCommit }}_{{ .Os }}_{{ .Arch }}"
+    format_overrides:
+      - goos: windows
+        format: zip
+
+# modelines, feel free to remove those if you don't want/use them:
+# yaml-language-server: $schema=https://goreleaser.com/static/schema.json
+# vim: set ts=2 sw=2 tw=0 fo=cnqoj

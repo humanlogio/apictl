@@ -1,4 +1,4 @@
-name: Create a release
+name: Create a prod release
 
 on:
   push:
@@ -20,26 +20,24 @@ jobs:
       - run: git fetch --force --tags
       - uses: actions/setup-go@v3
         with:
-          go-version: ">=1.19.4"
+          go-version: ">=1.23"
           cache: true
-      - uses: sigstore/cosign-installer@main
-      - uses: goreleaser/goreleaser-action@v4
+      - uses: goreleaser/goreleaser-action@v6
         with:
           distribution: goreleaser
           version: latest
           args: release --clean --config .goreleaser.yaml
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          COSIGN_PWD: ${{ secrets.COSIGN_PWD }}
-          COSIGN_PRIVATE_KEY: ${{ secrets.COSIGN_PRIVATE_KEY }}
-      - run: echo "${HOME}/.humanlog/bin" >> $GITHUB_PATH
-      - run: curl https://humanlog.io/install_apictl.sh | bash
+      - run: echo "${GITHUB_WORKSPACE}/dist/apictl_linux_amd64_v1" >> $GITHUB_PATH
       - run: apictl ${{ inputs.command }}
         env:
           HMAC_KEY_ID: ${{ secrets.PROD_HMAC_KEY_ID }}
           HMAC_PRIVATE_KEY: ${{ secrets.PROD_HMAC_PRIVATE_KEY }}
       - run: ./script/create_version_artifacts.sh
         env:
+          CHANNEL: "main"
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          API_URL: "https://api.humanlog.io"
           HMAC_KEY_ID: ${{ secrets.PROD_HMAC_KEY_ID }}
           HMAC_PRIVATE_KEY: ${{ secrets.PROD_HMAC_PRIVATE_KEY }}
