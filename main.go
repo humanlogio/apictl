@@ -3,11 +3,13 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"log"
 	"net/http"
 	"os"
 	"os/signal"
 	"runtime"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -141,6 +143,7 @@ func newApp() *cli.App {
 
 	parseVersion := func(cctx *cli.Context) (*typesv1.Version, error) {
 		if v := cctx.String(flagVersion); v != "" {
+			v = strings.TrimPrefix(v, "v")
 			vv, err := semver.Parse(v)
 			if err != nil {
 				return nil, err
@@ -175,6 +178,256 @@ func newApp() *cli.App {
 	app.Commands = append(app.Commands, cli.Command{
 		Name: "get",
 		Subcommands: cli.Commands{
+			{
+				Name: "version",
+				Subcommands: cli.Commands{
+					{
+						Name: "to-json",
+						Flags: []cli.Flag{
+							cli.StringFlag{Name: flagVersion},
+							cli.IntFlag{Name: flagVersionMajor},
+							cli.IntFlag{Name: flagVersionMinor},
+							cli.IntFlag{Name: flagVersionPatch},
+							cli.StringSliceFlag{Name: flagVersionPrereleases},
+							cli.StringFlag{Name: flagVersionBuild},
+						},
+						Action: func(cctx *cli.Context) error {
+							version, err := parseVersion(cctx)
+							if err != nil {
+								return fmt.Errorf("parsing version flag: %w", err)
+							}
+							if err := json.NewEncoder(os.Stdout).Encode(version); err != nil {
+								return fmt.Errorf("encoding to stdout: %w", err)
+							}
+							return nil
+						},
+					},
+					{
+						Name: "from-json",
+						Action: func(cctx *cli.Context) error {
+							input := new(typesv1.Version)
+							if err := json.NewDecoder(os.Stdin).Decode(input); err != nil {
+								return fmt.Errorf("decoding version from stdin: %w", err)
+							}
+							sv, err := input.AsSemver()
+							if err != nil {
+								return fmt.Errorf("converting to semver: %v", err)
+							}
+							_, err = os.Stdout.WriteString(sv.String())
+							return err
+						},
+					},
+					{
+						Name:  "math",
+						Usage: "<lhs> <operator> [<rhs>]",
+						Description: "Operate on versions as JSON on stdin.\n" +
+							"`<lhs>` can be one of `major`, `minor`, `patch`\n" +
+							"`<operator>` can be one of `add`, `sub` or `set`\n" +
+							"`<rhs>` is an integer value, relevant depending on <operator>\n",
+						Action: func(cctx *cli.Context) error {
+
+							lhs := cctx.Args().Get(0)
+							operator := cctx.Args().Get(1)
+							rhs := cctx.Args().Get(2)
+							parseInt32RHS := func() (int32, error) {
+								if rhs == "" {
+									return 0, fmt.Errorf("<rhs> can't be empty")
+								}
+								v, err := strconv.ParseInt(rhs, 10, 32)
+								if err != nil {
+									return 0, fmt.Errorf("invalid argument for <rhs>: %w", err)
+								}
+								return int32(v), nil
+							}
+							parseStringRHS := func() (string, error) {
+								return rhs, nil
+							}
+							parseStringSliceRHS := func() ([]string, error) {
+								return strings.Split(rhs, ","), nil
+							}
+
+							var (
+								load              func(*typesv1.Version) any
+								store             func(*typesv1.Version, any)
+								operatorFn        func(any) (any, error)
+								makeInt32Operator = func(fn func(int32) int32) func(any) (any, error) {
+									return func(arg any) (any, error) {
+										a, ok := arg.(int32)
+										if !ok {
+											return nil, fmt.Errorf("<lhs> is not an int")
+										}
+										return fn(a), nil
+									}
+								}
+								makeStringSliceOperator = func(fn func([]string) []string) func(any) (any, error) {
+									return func(arg any) (any, error) {
+										a, ok := arg.([]string)
+										if !ok {
+											return nil, fmt.Errorf("<lhs> is not a slice of string")
+										}
+										return fn(a), nil
+									}
+								}
+								makeStringOperator = func(fn func(string) string) func(any) (any, error) {
+									return func(arg any) (any, error) {
+										a, ok := arg.(string)
+										if !ok {
+											return nil, fmt.Errorf("<lhs> is not a slice of string")
+										}
+										return fn(a), nil
+									}
+								}
+								operatorType string
+							)
+							switch lhs {
+							default:
+								log.Printf("unsupported <lhs>: %q", lhs)
+								return cli.ShowSubcommandHelp(cctx)
+							case "":
+								log.Printf("no <lhs> specified")
+								return cli.ShowSubcommandHelp(cctx)
+							case "major":
+								load = func(version *typesv1.Version) any { return version.Major }
+								store = func(version *typesv1.Version, v any) { version.Major = v.(int32) }
+								operatorType = "int32"
+							case "minor":
+								load = func(version *typesv1.Version) any { return version.Minor }
+								store = func(version *typesv1.Version, v any) { version.Minor = v.(int32) }
+								operatorType = "int32"
+							case "patch":
+								load = func(version *typesv1.Version) any { return version.Patch }
+								store = func(version *typesv1.Version, v any) { version.Patch = v.(int32) }
+								operatorType = "int32"
+							case "pre":
+								load = func(version *typesv1.Version) any { return version.Prereleases }
+								store = func(version *typesv1.Version, v any) { version.Prereleases = v.([]string) }
+								operatorType = "[]string"
+							case "build":
+								load = func(version *typesv1.Version) any { return version.Build }
+								store = func(version *typesv1.Version, v any) { version.Build = v.(string) }
+								operatorType = "string"
+							}
+							switch operator {
+							default:
+								log.Printf("unsupported <operator>: %q", operator)
+								return cli.ShowSubcommandHelp(cctx)
+							case "":
+								log.Printf("no <operator> specified")
+								return cli.ShowSubcommandHelp(cctx)
+							case "add":
+								switch operatorType {
+								case "int32":
+									rhsv, err := parseInt32RHS()
+									if err != nil {
+										log.Printf("invalid <rhs> for <operator> `add`: %v", err)
+										return cli.ShowSubcommandHelp(cctx)
+									}
+									operatorFn = makeInt32Operator(func(lhsv int32) int32 {
+										return lhsv + rhsv
+									})
+								case "[]string":
+									rhsv, err := parseStringRHS()
+									if err != nil {
+										log.Printf("invalid <rhs> for <operator> `add`: %v", err)
+										return cli.ShowSubcommandHelp(cctx)
+									}
+									operatorFn = makeStringSliceOperator(func(lhsv []string) []string {
+										return append(lhsv, rhsv)
+									})
+								case "string":
+									rhsv, err := parseStringRHS()
+									if err != nil {
+										log.Printf("invalid <rhs> for <operator> `add`: %v", err)
+										return cli.ShowSubcommandHelp(cctx)
+									}
+									operatorFn = makeStringOperator(func(lhsv string) string {
+										return lhsv + rhsv
+									})
+								}
+
+							case "sub":
+								switch operatorType {
+								case "int32":
+									rhsv, err := parseInt32RHS()
+									if err != nil {
+										log.Printf("invalid <rhs> for <operator> `sub`: %v", err)
+										return cli.ShowSubcommandHelp(cctx)
+									}
+									operatorFn = makeInt32Operator(func(lhsv int32) int32 {
+										return lhsv - rhsv
+									})
+								case "[]string":
+									rhsv, err := parseStringRHS()
+									if err != nil {
+										log.Printf("invalid <rhs> for <operator> `sub`: %v", err)
+										return cli.ShowSubcommandHelp(cctx)
+									}
+									operatorFn = makeStringSliceOperator(func(lhsv []string) []string {
+										return slices.DeleteFunc(lhsv, func(v string) bool {
+											return v == rhsv
+										})
+									})
+								case "string":
+									rhsv, err := parseStringRHS()
+									if err != nil {
+										log.Printf("invalid <rhs> for <operator> `sub`: %v", err)
+										return cli.ShowSubcommandHelp(cctx)
+									}
+									operatorFn = makeStringOperator(func(lhsv string) string {
+										return strings.ReplaceAll(lhsv, rhsv, "")
+									})
+								}
+							case "set":
+								switch operatorType {
+								case "int32":
+									rhsv, err := parseInt32RHS()
+									if err != nil {
+										log.Printf("invalid <rhs> for <operator> `set`: %v", err)
+										return cli.ShowSubcommandHelp(cctx)
+									}
+									operatorFn = makeInt32Operator(func(_ int32) int32 {
+										return rhsv
+									})
+								case "[]string":
+									rhsv, err := parseStringSliceRHS()
+									if err != nil {
+										log.Printf("invalid <rhs> for <operator> `set`: %v", err)
+										return cli.ShowSubcommandHelp(cctx)
+									}
+									operatorFn = makeStringSliceOperator(func(_ []string) []string {
+										return rhsv
+									})
+								case "string":
+									rhsv, err := parseStringRHS()
+									if err != nil {
+										log.Printf("invalid <rhs> for <operator> `set`: %v", err)
+										return cli.ShowSubcommandHelp(cctx)
+									}
+									operatorFn = makeStringOperator(func(_ string) string {
+										return rhsv
+									})
+								}
+							}
+
+							input := new(typesv1.Version)
+							if err := json.NewDecoder(os.Stdin).Decode(input); err != nil {
+								return fmt.Errorf("decoding version from stdin: %w", err)
+							}
+
+							out, err := operatorFn(load(input))
+							if err != nil {
+								return fmt.Errorf("performing operation: %v", err)
+							}
+							store(input, out)
+
+							if err := json.NewEncoder(os.Stdout).Encode(input); err != nil {
+								return fmt.Errorf("encoding result to stdout: %v", err)
+							}
+							return nil
+						},
+					},
+				},
+			},
 			{
 				Name: "next-update",
 				Flags: []cli.Flag{
