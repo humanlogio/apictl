@@ -150,6 +150,7 @@ func newApp() *cli.App {
 		flagS3Region                = "s3.region"
 		flagS3Bucket                = "s3.bucket"
 		flagS3Directory             = "s3.directory"
+		flagS3UsePathStyle          = "s3.use_path_style"
 		flagS3ACL                   = "s3.acl"
 		flagS3CacheControl          = "s3.cache_control"
 		flagFilepath                = "filepath"
@@ -328,6 +329,7 @@ func newApp() *cli.App {
 					cli.StringFlag{Name: flagS3Region, Required: true},
 					cli.StringFlag{Name: flagS3Bucket, Required: true},
 					cli.StringFlag{Name: flagS3Directory, Required: true},
+					cli.BoolFlag{Name: flagS3UsePathStyle},
 					cli.StringFlag{Name: flagS3ACL, Value: string(types.ObjectCannedACLPublicRead)},
 					cli.StringFlag{Name: flagS3CacheControl, Value: `max-age=9999,public`},
 				},
@@ -338,6 +340,7 @@ func newApp() *cli.App {
 					region := cctx.String(flagS3Region)
 					bucket := cctx.String(flagS3Bucket)
 					directory := cctx.String(flagS3Directory)
+					usePathStyle := cctx.Bool(flagS3UsePathStyle)
 					acl := cctx.String(flagS3ACL)
 					cacheControl := cctx.String(flagS3CacheControl)
 					filepath := cctx.String(flagFilepath)
@@ -345,6 +348,7 @@ func newApp() *cli.App {
 					client := s3.New(s3.Options{
 						Region:       region,
 						BaseEndpoint: &endpoint,
+						UsePathStyle: usePathStyle,
 						Credentials: aws.NewCredentialsCache(credentials.NewStaticCredentialsProvider(
 							accessKey,
 							secretKey,
