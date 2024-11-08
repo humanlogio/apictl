@@ -14,6 +14,11 @@ import (
 	"strings"
 
 	"connectrpc.com/connect"
+
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/credentials"
+	"github.com/aws/aws-sdk-go-v2/service/s3"
+	"github.com/aws/aws-sdk-go-v2/service/s3/types"
 	"github.com/aybabtme/hmachttp"
 	"github.com/aybabtme/rgbterm"
 	"github.com/blang/semver"
@@ -139,6 +144,15 @@ func newApp() *cli.App {
 		flagArtifactOperatingSystem = "os"
 		flagAccountId               = "account.id"
 		flagMachineId               = "machine.id"
+		flagS3AccessKey             = "s3.access_key"
+		flagS3SecretKey             = "s3.secret_key"
+		flagS3Endpoint              = "s3.endpoint"
+		flagS3Region                = "s3.region"
+		flagS3Bucket                = "s3.bucket"
+		flagS3Directory             = "s3.directory"
+		flagS3ACL                   = "s3.acl"
+		flagS3CacheControl          = "s3.cache_control"
+		flagFilepath                = "filepath"
 	)
 
 	parseVersion := func(cctx *cli.Context) (*typesv1.Version, error) {
@@ -302,6 +316,65 @@ func newApp() *cli.App {
 					_ = res
 					log.Printf("created")
 					return nil
+				},
+			},
+			{
+				Name: "s3-artifact",
+				Flags: []cli.Flag{
+					cli.StringFlag{Name: flagFilepath, Required: true},
+					cli.StringFlag{Name: flagS3AccessKey, Required: true},
+					cli.StringFlag{Name: flagS3SecretKey, Required: true},
+					cli.StringFlag{Name: flagS3Endpoint, Required: true},
+					cli.StringFlag{Name: flagS3Region, Required: true},
+					cli.StringFlag{Name: flagS3Bucket, Required: true},
+					cli.StringFlag{Name: flagS3Directory, Required: true},
+					cli.StringFlag{Name: flagS3ACL, Value: string(types.ObjectCannedACLPublicRead)},
+					cli.StringFlag{Name: flagS3CacheControl, Value: `max-age=9999,public`},
+				},
+				Action: func(cctx *cli.Context) error {
+					accessKey := cctx.String(flagS3AccessKey)
+					secretKey := cctx.String(flagS3SecretKey)
+					endpoint := cctx.String(flagS3Endpoint)
+					region := cctx.String(flagS3Region)
+					bucket := cctx.String(flagS3Bucket)
+					directory := cctx.String(flagS3Directory)
+					acl := cctx.String(flagS3ACL)
+					cacheControl := cctx.String(flagS3CacheControl)
+					filepath := cctx.String(flagFilepath)
+
+					client := s3.New(s3.Options{
+						Region:       region,
+						BaseEndpoint: &endpoint,
+						Credentials: aws.NewCredentialsCache(credentials.NewStaticCredentialsProvider(
+							accessKey,
+							secretKey,
+							"",
+						)),
+					})
+
+					file, err := os.Open(filepath)
+					if err != nil {
+						return fmt.Errorf("opening filepath %q: %v", filepath, err)
+					}
+					defer file.Close()
+
+					output, err := client.PutObject(ctx, &s3.PutObjectInput{
+						Bucket:       aws.String(bucket),
+						Key:          aws.String(directory),
+						Body:         file,
+						CacheControl: aws.String(cacheControl),
+						ACL:          types.ObjectCannedACL(acl),
+					})
+					if err != nil {
+						return fmt.Errorf("putting object %q: %v", filepath, err)
+					}
+					enc := json.NewEncoder(os.Stdout)
+					enc.SetIndent("", "  ")
+					if err := enc.Encode(output); err != nil {
+						log.Printf("operation succeeded but error printing result: %v", err)
+					}
+					log.Printf("created in object storage")
+					return err
 				},
 			},
 			{
