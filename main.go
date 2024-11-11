@@ -24,6 +24,8 @@ import (
 	"github.com/blang/semver"
 	cliupdatepb "github.com/humanlogio/api/go/svc/cliupdate/v1"
 	"github.com/humanlogio/api/go/svc/cliupdate/v1/cliupdatev1connect"
+	productpb "github.com/humanlogio/api/go/svc/product/v1"
+	"github.com/humanlogio/api/go/svc/product/v1/productv1connect"
 	releasepb "github.com/humanlogio/api/go/svc/release/v1"
 	"github.com/humanlogio/api/go/svc/release/v1/releasev1connect"
 	typesv1 "github.com/humanlogio/api/go/types/v1"
@@ -129,6 +131,7 @@ func newApp() *cli.App {
 
 	const (
 		flagProjectName             = "project"
+		flagCategory                = "category"
 		flagChannelName             = "channel"
 		flagChannelPriority         = "priority"
 		flagVersion                 = "version"
@@ -572,6 +575,43 @@ func newApp() *cli.App {
 						Limit:       cctx.Int64(flagLimit),
 					}
 					res, err := releaseClient.ListVersionArtifact(ctx, connect.NewRequest(req))
+					if err != nil {
+						return err
+					}
+					enc := json.NewEncoder(os.Stdout)
+					for _, item := range res.Msg.Items {
+						if err := enc.Encode(item); err != nil {
+							log.Fatalf("encoding json: %v", err)
+						}
+					}
+					log.Printf("%d results", len(res.Msg.Items))
+					if res.Msg.Next != nil {
+						log.Printf("more results with --%s=%q", flagCursor, string(res.Msg.Next.Opaque))
+					}
+					return nil
+				},
+			},
+			{
+				Name: "product",
+				Flags: []cli.Flag{
+					cli.StringFlag{Name: flagCategory},
+					cli.StringFlag{Name: flagCursor},
+					cli.Int64Flag{Name: flagLimit},
+				},
+				Action: func(cctx *cli.Context) error {
+					apiURL := cctx.GlobalString(flagAPIURL)
+					productClient := productv1connect.NewProductServiceClient(client, apiURL)
+					var cursor *typesv1.Cursor
+					if opaque := cctx.String(flagCursor); opaque != "" {
+						cursor = &typesv1.Cursor{Opaque: []byte(opaque)}
+					}
+					req := &productpb.ListProductRequest{
+						Cursor:   cursor,
+						Limit:    int32(cctx.Int(flagLimit)),
+						Category: cctx.String(flagCategory),
+					}
+
+					res, err := productClient.ListProduct(ctx, connect.NewRequest(req))
 					if err != nil {
 						return err
 					}

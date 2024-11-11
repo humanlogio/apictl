@@ -13,7 +13,7 @@ require (
 	github.com/aybabtme/rgbterm v0.0.0-20170906152045-cc83f3b3ce59
 	github.com/blang/semver v3.5.1+incompatible
 	github.com/cli/safeexec v1.0.1
-	github.com/humanlogio/api/go v0.0.0-20241011070935-7bb04da206c8
+	github.com/humanlogio/api/go v0.0.0-20241111064752-147218a45746
 	github.com/mattn/go-colorable v0.1.13
 	github.com/urfave/cli v1.22.10
 )
@@ -36,3 +36,5 @@ require (
 	golang.org/x/sys v0.2.0 // indirect
 	google.golang.org/protobuf v1.33.0 // indirect
 )
+
+// replace github.com/humanlogio/api/go => ../api/go/

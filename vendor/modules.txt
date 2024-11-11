@@ -106,10 +106,12 @@ github.com/cli/safeexec
 # github.com/cpuguy83/go-md2man/v2 v2.0.0-20190314233015-f79a8a8ca69d
 ## explicit; go 1.12
 github.com/cpuguy83/go-md2man/v2/md2man
-# github.com/humanlogio/api/go v0.0.0-20241011070935-7bb04da206c8
+# github.com/humanlogio/api/go v0.0.0-20241111064752-147218a45746
 ## explicit; go 1.19
 github.com/humanlogio/api/go/svc/cliupdate/v1
 github.com/humanlogio/api/go/svc/cliupdate/v1/cliupdatev1connect
+github.com/humanlogio/api/go/svc/product/v1
+github.com/humanlogio/api/go/svc/product/v1/productv1connect
 github.com/humanlogio/api/go/svc/release/v1
 github.com/humanlogio/api/go/svc/release/v1/releasev1connect
 github.com/humanlogio/api/go/types/v1
