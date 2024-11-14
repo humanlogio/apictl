@@ -145,7 +145,7 @@ func newApp() *cli.App {
 		flagArtifactSignature       = "sig"
 		flagArtifactArchitecture    = "arch"
 		flagArtifactOperatingSystem = "os"
-		flagAccountId               = "account.id"
+		flagEnvironmentId           = "environment.id"
 		flagMachineId               = "machine.id"
 		flagS3AccessKey             = "s3.access_key"
 		flagS3SecretKey             = "s3.secret_key"
@@ -200,7 +200,7 @@ func newApp() *cli.App {
 				Name: "next-update",
 				Flags: []cli.Flag{
 					cli.StringFlag{Name: flagProjectName, Required: true},
-					cli.IntFlag{Name: flagAccountId, Required: true},
+					cli.IntFlag{Name: flagEnvironmentId, Required: true},
 					cli.IntFlag{Name: flagMachineId, Required: true},
 					cli.StringFlag{Name: flagVersion},
 					cli.IntFlag{Name: flagVersionMajor},
@@ -214,7 +214,6 @@ func newApp() *cli.App {
 				Action: func(cctx *cli.Context) error {
 					apiURL := cctx.GlobalString(flagAPIURL)
 					updateClient := cliupdatev1connect.NewUpdateServiceClient(client, apiURL)
-					accountId := cctx.Int64(flagAccountId)
 					machineId := cctx.Int64(flagMachineId)
 					version, err := parseVersion(cctx)
 					if err != nil {
@@ -228,7 +227,6 @@ func newApp() *cli.App {
 						MachineArchitecture:    cctx.String(flagArtifactArchitecture),
 						MachineOperatingSystem: cctx.String(flagArtifactOperatingSystem),
 						Meta: &typesv1.ReqMeta{
-							AccountId: accountId,
 							MachineId: machineId,
 						},
 					}))
@@ -238,9 +236,6 @@ func newApp() *cli.App {
 					msg := res.Msg
 					meta := msg.Meta
 
-					if accountId != meta.AccountId {
-						log.Printf("an account id was assigned: %d", meta.AccountId)
-					}
 					if machineId != meta.MachineId {
 						log.Printf("a machine id was assigned: %d", meta.MachineId)
 					}
@@ -637,13 +632,11 @@ func newApp() *cli.App {
 			{
 				Name: "check",
 				Flags: []cli.Flag{
-					cli.IntFlag{Name: flagAccountId, Value: -1},
 					cli.IntFlag{Name: flagMachineId, Value: -1},
 				},
 				Action: func(cctx *cli.Context) error {
 					apiURL := cctx.GlobalString(flagAPIURL)
 					updateClient := cliupdatev1connect.NewUpdateServiceClient(client, apiURL)
-					accountId := cctx.Int64(flagAccountId)
 					machineId := cctx.Int64(flagMachineId)
 					res, err := updateClient.GetNextUpdate(ctx, connect.NewRequest(&cliupdatepb.GetNextUpdateRequest{
 						ProjectName:            "apictl",
@@ -651,7 +644,6 @@ func newApp() *cli.App {
 						MachineArchitecture:    runtime.GOARCH,
 						MachineOperatingSystem: runtime.GOOS,
 						Meta: &typesv1.ReqMeta{
-							AccountId: accountId,
 							MachineId: machineId,
 						},
 					}))
@@ -660,9 +652,6 @@ func newApp() *cli.App {
 					}
 					msg := res.Msg
 					meta := msg.Meta
-					if accountId != meta.AccountId {
-						log.Printf("an account id was assigned: %d", meta.AccountId)
-					}
 					if machineId != meta.MachineId {
 						log.Printf("a machine id was assigned: %d", meta.MachineId)
 					}
@@ -691,13 +680,11 @@ func newApp() *cli.App {
 			{
 				Name: "update",
 				Flags: []cli.Flag{
-					cli.IntFlag{Name: flagAccountId, Value: -1},
 					cli.IntFlag{Name: flagMachineId, Value: -1},
 				},
 				Action: func(cctx *cli.Context) error {
 					apiURL := cctx.GlobalString(flagAPIURL)
 					updateClient := cliupdatev1connect.NewUpdateServiceClient(client, apiURL)
-					accountId := cctx.Int64(flagAccountId)
 					machineId := cctx.Int64(flagMachineId)
 					res, err := updateClient.GetNextUpdate(ctx, connect.NewRequest(&cliupdatepb.GetNextUpdateRequest{
 						ProjectName:            "apictl",
@@ -705,7 +692,6 @@ func newApp() *cli.App {
 						MachineArchitecture:    runtime.GOARCH,
 						MachineOperatingSystem: runtime.GOOS,
 						Meta: &typesv1.ReqMeta{
-							AccountId: accountId,
 							MachineId: machineId,
 						},
 					}))
@@ -714,9 +700,6 @@ func newApp() *cli.App {
 					}
 					msg := res.Msg
 					meta := msg.Meta
-					if accountId != meta.AccountId {
-						log.Printf("an account id was assigned: %d", meta.AccountId)
-					}
 					if machineId != meta.MachineId {
 						log.Printf("a machine id was assigned: %d", meta.MachineId)
 					}

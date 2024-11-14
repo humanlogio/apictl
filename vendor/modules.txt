@@ -106,7 +106,7 @@ github.com/cli/safeexec
 # github.com/cpuguy83/go-md2man/v2 v2.0.0-20190314233015-f79a8a8ca69d
 ## explicit; go 1.12
 github.com/cpuguy83/go-md2man/v2/md2man
-# github.com/humanlogio/api/go v0.0.0-20241111064752-147218a45746
+# github.com/humanlogio/api/go v0.0.0-20241113101248-3e03dc2ef4e0 => ../api/go/
 ## explicit; go 1.19
 github.com/humanlogio/api/go/svc/cliupdate/v1
 github.com/humanlogio/api/go/svc/cliupdate/v1/cliupdatev1connect
@@ -168,3 +168,4 @@ google.golang.org/protobuf/runtime/protoiface
 google.golang.org/protobuf/runtime/protoimpl
 google.golang.org/protobuf/types/known/anypb
 google.golang.org/protobuf/types/known/timestamppb
+# github.com/humanlogio/api/go => ../api/go/
