@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
-	"log/slog"
 	"net/http"
 	"os"
 	"os/signal"
@@ -17,7 +16,6 @@ import (
 	"time"
 
 	"connectrpc.com/connect"
-	"github.com/99designs/keyring"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/credentials"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
@@ -31,11 +29,8 @@ import (
 	"github.com/humanlogio/api/go/svc/product/v1/productv1connect"
 	releasepb "github.com/humanlogio/api/go/svc/release/v1"
 	"github.com/humanlogio/api/go/svc/release/v1/releasev1connect"
-	userpb "github.com/humanlogio/api/go/svc/user/v1"
-	"github.com/humanlogio/api/go/svc/user/v1/userv1connect"
 	typesv1 "github.com/humanlogio/api/go/types/v1"
 	"github.com/humanlogio/apictl/pkg/selfupdate"
-	"github.com/humanlogio/humanlog/pkg/auth"
 	"github.com/mattn/go-colorable"
 	"github.com/urfave/cli"
 )
@@ -207,18 +202,6 @@ func newApp() *cli.App {
 			}
 		}
 		return out, nil
-	}
-	getTokenSource := func(cctx *cli.Context, serviceNameFlagName string) *auth.UserRefreshableTokenSource {
-		return auth.NewRefreshableTokenSource(func() (keyring.Keyring, error) {
-			return keyring.Open(keyring.Config{
-				ServiceName:            cctx.String(serviceNameFlagName),
-				KeychainSynchronizable: true,
-				FileDir:                defaultAuthTokenPath,
-				FilePasswordFunc: func(s string) (pwd string, err error) {
-					return "", nil
-				},
-			})
-		})
 	}
 
 	app.Commands = append(app.Commands, cli.Command{
@@ -633,46 +616,6 @@ func newApp() *cli.App {
 					res, err := productClient.ListProduct(ctx, connect.NewRequest(req))
 					dur := time.Since(now)
 					defer func() { log.Printf("done in %v", dur) }()
-					if err != nil {
-						return err
-					}
-					err = json.NewEncoder(os.Stdout).Encode(res.Msg)
-					if err != nil {
-						log.Fatalf("encoding json: %v", err)
-					}
-					log.Printf("%d results", len(res.Msg.Items))
-					if res.Msg.Next != nil {
-						log.Printf("more results with --%s=%q", flagCursor, string(res.Msg.Next.Opaque))
-					}
-					return nil
-				},
-			},
-			{
-				Name: "org",
-				Flags: []cli.Flag{
-					cli.StringFlag{Name: flagKeyring, Value: "humanlog"},
-					cli.StringFlag{Name: flagCursor},
-					cli.Int64Flag{Name: flagLimit},
-				},
-				Action: func(cctx *cli.Context) error {
-					apiURL := cctx.GlobalString(flagAPIURL)
-					tokenSource := getTokenSource(cctx, flagKeyring)
-					ll := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelDebug}))
-					clOpts = append(clOpts, connect.WithInterceptors(
-						auth.Interceptors(ll, tokenSource)...,
-					)
-
-					userClient := userv1connect.NewUserServiceClient(client, apiURL, clOpts)
-					var cursor *typesv1.Cursor
-					if opaque := cctx.String(flagCursor); opaque != "" {
-						cursor = &typesv1.Cursor{Opaque: []byte(opaque)}
-					}
-					req := &userpb.ListOrganizationRequest{
-						Cursor: cursor,
-						Limit:  int32(cctx.Int(flagLimit)),
-					}
-
-					res, err := userClient.ListOrganization(ctx, connect.NewRequest(req))
 					if err != nil {
 						return err
 					}
