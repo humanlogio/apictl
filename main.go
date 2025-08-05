@@ -14,6 +14,7 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+	"time"
 
 	"connectrpc.com/connect"
 	"github.com/99designs/keyring"
@@ -628,7 +629,10 @@ func newApp() *cli.App {
 						Category: cctx.String(flagCategory),
 					}
 
+					now := time.Now()
 					res, err := productClient.ListProduct(ctx, connect.NewRequest(req))
+					dur := time.Since(now)
+					defer func() { log.Printf("done in %v", dur) }()
 					if err != nil {
 						return err
 					}
@@ -653,8 +657,8 @@ func newApp() *cli.App {
 				Action: func(cctx *cli.Context) error {
 					apiURL := cctx.GlobalString(flagAPIURL)
 					tokenSource := getTokenSource(cctx, flagKeyring)
-					ll := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{}))
-					clOpts := connect.WithInterceptors(
+					ll := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelDebug}))
+					clOpts = append(clOpts, connect.WithInterceptors(
 						auth.Interceptors(ll, tokenSource)...,
 					)
 
